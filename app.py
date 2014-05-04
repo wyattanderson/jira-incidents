@@ -9,7 +9,9 @@ import requests
 app = Flask(__name__)
 app.debug = True
 app.config['PD_SERVICE_KEY'] = os.environ.get('PD_SERVICE_KEY')
-app.config.from_envvar('SETTINGS_FILE')
+
+if 'SETTINGS_FILE' in os.environ:
+    app.config.from_envvar('SETTINGS_FILE')
 
 
 @app.route('/api/v1/jira-hook/', methods=('POST',))
