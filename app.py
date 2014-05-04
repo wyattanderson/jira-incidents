@@ -17,6 +17,8 @@ if 'SETTINGS_FILE' in os.environ:
 @app.route('/api/v1/jira-hook/', methods=('POST',))
 def jira_hook():
     hook_data = request.get_json()
+    pprint(hook_data)
+
     process_issue(hook_data)
 
     return Response(status=204)
@@ -33,6 +35,9 @@ def did_become_blocker(hook_data):
 
 
 def issue_should_resolve(hook_data):
+    if not 'changelog' in hook_data:
+        return False
+
     priority_changes = filter(lambda i: i['field'] == 'priority',
                               hook_data['changelog']['items'])
     if priority_changes and priority_changes[0]['from'] == "1":
@@ -45,7 +50,17 @@ def issue_should_resolve(hook_data):
 
 
 def process_issue(hook_data):
-    should_trigger = did_become_blocker(hook_data)
+    should_trigger = False
+
+    # Newly-created issues don't have a ``changelog``, so we have to check the
+    # issue status directly.
+    if 'changelog' in hook_data:
+        should_trigger = did_become_blocker(hook_data)
+    else:
+        try:
+            should_trigger = hook_data['issue']['fields']['priority']['id'] == '1'
+        except KeyError as e:
+            print "Couldn't determine issue priority."
 
     if should_trigger:
         _trigger(hook_data)
@@ -104,17 +119,21 @@ def _trigger(hook_data):
         '',
     ))
 
+    issue = hook_data['issue']
+    fields = issue['fields']
+
     r = pd_request(data={
-        'incident_key': hook_data['issue']['key'],
+        'incident_key': issue['key'],
         'event_type': 'trigger',
         'description': 'New Blocker Issue - {key} - {url}'.format(
-            key=hook_data['issue']['key'],
+            key=issue['key'],
             url=issue_url
         ),
         'details': {
-            'Summary': hook_data['issue']['fields']['summary'],
-            'Creator': hook_data['issue']['fields']['creator']['displayName'],
-            'Assignee': hook_data['issue']['fields']['assignee']['displayName'],
+            'Summary': fields['summary'],
+            'Creator': fields['creator']['displayName'],
+            'Assignee': (fields['assignee']['displayName'] if
+                         fields['assignee'] else 'None'),
         },
     })
 
