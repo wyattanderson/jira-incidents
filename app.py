@@ -17,7 +17,6 @@ if 'SETTINGS_FILE' in os.environ:
 @app.route('/api/v1/jira-hook/', methods=('POST',))
 def jira_hook():
     hook_data = request.get_json()
-    pprint(hook_data)
 
     process_issue(hook_data)
 
