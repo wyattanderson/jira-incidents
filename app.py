@@ -1,4 +1,5 @@
 import json
+import os
 import urlparse
 from pprint import pprint
 
@@ -7,6 +8,7 @@ import requests
 
 app = Flask(__name__)
 app.debug = True
+app.config['PD_SERVICE_KEY'] = os.environ.get('PD_SERVICE_KEY')
 app.config.from_envvar('SETTINGS_FILE')
 
 
